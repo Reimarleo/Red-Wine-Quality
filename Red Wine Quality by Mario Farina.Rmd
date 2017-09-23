@@ -1,0 +1,571 @@
+Red Wine Quality by Mario Farina
+========================================================
+
+```{r global_options, include=FALSE}
+# Global options for knitted file
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+# Objective
+
+The objective of this project is to explore the relationship between the quality of wines (as assessed by experts) and 11 of their chemical properties.
+
+# About the data set
+This is tidy data set with 1,599 red wines. For each one of them the data set includes 11 variables based on physicochemical tests and "quality" variable that originates from the rating of at least 3 wine experts who provided a rating between 0 and 10.
+More information can be found here:
+https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+
+# installing/loading the latest installr package:
+#install.packages('ggplot2')
+#install.packages('GGally')
+#install.packages('gridExtra')
+#install.packages('knitr')
+#updateR()
+#R.Version()
+
+# Load all of the packages that will be used
+library(ggplot2)
+library(GGally)
+library(gridExtra)
+```
+
+```{r echo=FALSE, Load_the_Data}
+# Load the Data
+setwd('C:\\Users\\FarinaM\\Desktop\\Google Drive\\Nano Degree\\- Assignments\\P4')
+
+df <- read.csv('wineQualityReds.csv')
+```
+
+# Quick look at the data
+First, I run some basic functions to get an idea of what's in the data and what is the structure of the file.
+
+```{r echo=FALSE}
+# Look at the shape of the data set
+dim(df)
+names(df)
+```
+
+There are 13 variables instead of the 11 + quality as described in the info file. The "X" variable is just an index or unique id. "id" would have been a better name so I rename it. It will be completely ignored from now on anyway.
+
+```{r echo=FALSE}
+names(df)[names(df) == 'X'] <- 'id'
+```
+
+Output some basic information about the data.
+
+```{r echo=FALSE}
+# Get basic stats
+summary(df)
+str(df)
+```
+
+The most important things to notice about the data at this stage are:
+
+- All variables are numeric
+- All variables except quantity are continuous variables and coded as numerics
+- quality is an ordinal variable and coded as an integer
+- quality ranges from 3 to 8, has a median of 6 and a mean of 5.636
+
+# Univariate Analysis Section
+First, I create 2 sets of histogram plots, each containing a histogram for all the 12 variables. The first set with standard histograms and the second with a logarithmic scale of 10.
+
+### Histograms
+
+```{r echo=FALSE, Univariate_Plots}
+# histogram plots with all variables
+grid.arrange(qplot(df$fixed.acidity, bins=10),
+             qplot(df$volatile.acidity, bins=10),
+             qplot(df$citric.acid, bins=10),
+             qplot(df$residual.sugar, bins=10),
+             qplot(df$chlorides, bins=10),
+             qplot(df$free.sulfur.dioxide, bins=10),
+             qplot(df$total.sulfur.dioxide, bins=10),
+             qplot(df$density, bins=10),
+             qplot(df$pH, bins=10),
+             qplot(df$sulphates, bins=10),
+             qplot(df$alcohol, bins=10),
+             qplot(df$quality, bins=10),
+             ncol = 4)
+```
+### Histograms log10 scale
+
+```{r echo=FALSE, Univariate_Plots_log10}
+# histogram plots with all variables on a base 10 logarithmic scale
+grid.arrange(ggplot(data = df,
+       aes(x = fixed.acidity)) +
+       geom_histogram(bins=10) +
+       scale_x_log10(),
+       
+       ggplot(data = df,
+       aes(x = volatile.acidity)) +
+       geom_histogram(bins=10) +
+       scale_x_log10(),
+       
+       ggplot(data = df,
+       aes(x = citric.acid)) +
+       geom_histogram(bins=10) +
+       scale_x_log10(),
+       
+       ggplot(data = df,
+       aes(x = residual.sugar)) +
+       geom_histogram(bins=10) +
+       scale_x_log10(),
+       
+       ggplot(data = df,
+       aes(x = chlorides)) +
+       geom_histogram(bins=10) +
+       scale_x_log10(),
+       
+       ggplot(data = df,
+       aes(x = free.sulfur.dioxide)) +
+       geom_histogram(bins=10) +
+       scale_x_log10(),
+       
+       ggplot(data = df,
+       aes(x = total.sulfur.dioxide)) +
+       geom_histogram(bins=10) +
+       scale_x_log10(),
+       
+       ggplot(data = df,
+       aes(x = density)) +
+       geom_histogram(bins=10) +
+       scale_x_log10(),
+       
+       ggplot(data = df,
+       aes(x = pH)) +
+       geom_histogram(bins=10) +
+       scale_x_log10(),
+       
+       ggplot(data = df,
+       aes(x = sulphates)) +
+       geom_histogram(bins=10) +
+       scale_x_log10(),
+       
+       ggplot(data = df,
+       aes(x = alcohol)) +
+       geom_histogram(bins=10) +
+       scale_x_log10(),
+       
+       ggplot(data = df,
+       aes(x = quality)) +
+       geom_histogram(bins=10) +
+       scale_x_log10(),
+       
+      ncol = 4)
+
+
+```
+
+I notice that some are normally distributed and some are positively skewed. At first look, citric acid seems to have a bimodal distribution.
+
+However, when plotted on a base 10 logarithmic scale all distribusions tend to become more normal.
+
+### Quality
+
+The most important variable to investigate at this stage however is quality so I look at its distribution separately.
+
+```{r echo=FALSE}
+table(df$quality)
+```
+
+Histograms:
+
+```{r echo=FALSE}
+ggplot(data = df, aes(x = df$quality)) + 
+  stat_count(colour="black", fill="#722F37") +
+  xlab("Expert rating") + ylab("Count") +
+  ggtitle("Distribution of wine quality in sample")
+```
+
+```{r echo=FALSE}
+# Plot with percentages
+histPercent <- function(x, ...) {
+   H <- hist(x, plot = FALSE)
+   H$density <- with(H, 100 * density* diff(breaks)[1])
+   labs <- paste(round(H$density), "%", sep="")
+   plot(H, freq = FALSE, labels = labs, ylim=c(0, 1.08*max(H$density)),...)
+}
+histPercent(df$quality, col="#722F37")
+```
+
+The histograms show that the values are normally distributed. Based on this visualization it appears that most wines in the sample are average (grade 5 and 6), some are bad (3 and 4) and some are good (7 and 8). 
+Based on this distinction, I create a categorical "grade" variable for quality, where the values are (1) bad, (2) average and (3) good.
+
+```{r echo=FALSE}
+# create a grade varible using levels
+df$grade <- factor(df$quality)
+levels(df$grade) <- list(bad = 3:4, average = 5:6, good = 7:8)
+```
+
+Show counts.
+
+```{r echo=FALSE}
+summary(df$grade)
+```
+
+### Citric acid
+
+Citric acid is the variable with the most unusual distribution.
+Changing the number of bins to 10 produces a fairly rectangular shape, with the counts dropping after 0.5 and few outliers close to 1.
+
+```{r echo=FALSE}
+ggplot(data = df, aes(x = citric.acid)) +
+       geom_histogram(bins = 10, fill="#228B22") +
+       ggtitle("Citric Acid Histogram") +
+       xlab('Citric Acid (g / dm^3)') + ylab('Count')
+```
+
+```{r echo=FALSE}
+ggplot(data = df, aes(x = citric.acid)) +
+       geom_histogram(bins = 10, fill="#228B22") +
+       ggtitle("Citric Acid Histogram (log10 scale)") +
+       xlab('Citric Acid (g / dm^3)') + ylab('Count') +
+       scale_x_log10()
+```
+
+The histogram produced using a logarithmic scale of 10 looks very different because of the 0 values.
+This is the only variable with 0 values, which I thought is worth investigating.
+
+```{r echo=FALSE}
+# Get the count of 0 values
+sum(df$citric.acid == 0)
+```
+
+I am going to accept the 132 zero values as genuine for two reasons:
+- 1. The documentation on the data set states that there aren't any attributes with missing values.
+- 2. A quick Google search revealed that there are indeed wines without citric acid (see references).
+
+# Bivariate Analysis
+
+First, in order to focus the analysis on the most interesting variables I want to find out which variables have the highest level of correlation with quality.
+
+```{r echo=FALSE, Bivariate_Plots}
+#List correlations in the console
+
+paste("fixed acidity", cor(df$fixed.acidity, df$quality, method = "pearson"), sep=": ")
+# "pearson" is the default method of the cor function so there is no need to specify it
+paste("volatile acidity", cor(df$volatile.acidity, df$quality), sep=": ")
+paste("citric acid", cor(df$citric.acid, df$quality), sep=": ")
+paste("residual sugar", cor(df$residual.sugar, df$quality), sep=": ")
+paste("chlorides", cor(df$chlorides, df$quality), sep=": ")
+paste("free sulfur", cor(df$free.sulfur.dioxide, df$quality), sep=": ")
+paste("total sulfur dioxide", cor(df$total.sulfur.dioxide, df$quality), sep=": ")
+paste("density", cor(df$density, df$quality), sep=": ")
+paste("pH", cor(df$pH, df$quality), sep=": ")
+paste("sulphates", cor(df$sulphates, df$quality), sep=": ")
+paste("alcohol", cor(df$alcohol, df$quality), sep=": ")
+```
+
+
+```{r echo=FALSE}
+# Create data frame with correlations to generate plot
+correlations = c(cor(df$fixed.acidity, df$quality),
+                 cor(df$volatile.acidity, df$quality),
+                 cor(df$citric.acid, df$quality),
+                 cor(df$residual.sugar, df$quality),
+                 cor(df$chlorides, df$quality),
+                 cor(df$free.sulfur.dioxide, df$quality),
+                 cor(df$total.sulfur.dioxide, df$quality),
+                 cor(df$density, df$quality),
+                 cor(df$pH, df$quality),
+                 cor(df$sulphates, df$quality),
+                 cor(df$alcohol, df$quality))
+labels = c("fixed.acidity",
+           "volatile.acidity",
+           "citric.acid",
+           "residual.sugar",
+           "chlorides",
+           "free.sulfur.dioxide",
+           "total.sulfur.dioxide",
+           "density",
+           "ph",
+           "sulphates",
+           "alcohol")
+
+# Create data frame
+df_corrs = data.frame(correlations, labels)
+# create a vector with the magnitude of correlation
+# (we are interested in the strenght of correlation, not the direction at the moment)
+df_corrs$abs_corr <- abs(df_corrs$correlations)
+# sort by absolute of the correlation
+df_corrs <- df_corrs[with(df_corrs, order(-abs_corr)),]
+
+# Visualise data frame in bar chart
+ggplot(data=df_corrs, aes(x=labels, y=abs_corr)) +
+    geom_bar(colour="black", fill="#DD8888", width=.5, stat="identity") + 
+    guides(fill=FALSE) +
+    xlab('Attribute') + ylab('Magnitude of correlation') +
+    ggtitle('Correlations to quality')
+```
+
+The 4 attributes that are most highly correlated to quality are:
+
+- alcohol
+- volatile acidity
+- sulphates
+- citric acid
+
+I am going to focus on these 4 so I create a new data frame with only the variables in which I am interested, to reduce processing time.
+
+```{r echo=FALSE}
+keeps <- c("alcohol",
+           "volatile.acidity",
+           "sulphates",
+           "citric.acid",
+           "quality",
+           "grade")
+df_small <- df[keeps]
+```
+
+Using the small data frame with the subset of variables of interest I create a scatterplot matrix.
+
+```{r echo=FALSE}
+# Plot matrix using ggscatmat
+ggscatmat(df_small, columns = 1:ncol(df_small), corMethod = "pearson") +
+  ggtitle("Pairwise scatterplot matrix") +
+  xlab('') + ylab('') +
+  theme_grey(base_size=10)
+```
+
+What I notice immediately is that alcohol is positively correlated to quality, and citric acid is negatively correlated to volatile acidity, which is the strongest relationship visible here.
+
+I want to look at the relationship between quality and alcohol more in depth since that seems to be the most relevant finding to answer the research question.
+
+```{r echo=FALSE}
+grid.arrange(# density plot
+             ggplot(df_small, aes(x=alcohol, fill=factor(quality))) + 
+                    geom_density(alpha=.6, position = "stack")+
+                    ggtitle('Alcohol Levels in Different Wine Qualities'),
+             # 2 scatter plot
+             ggplot(df_small, aes(x=alcohol, y = quality)) + 
+                    geom_point(),
+             ggplot(data = df_small,
+                    aes(x = grade, y = alcohol, fill = grade)) +
+                    geom_boxplot() +
+                    xlab('Quality') +
+                    ylab('Alcohol (% by volume)'))
+```
+
+The three plots side by side clearly show how wines of higher quality tend to have more alcohol, although wines graded 5 have less alcohol than wines graded 3, so the relationship is not perfectly linear.
+
+Another way to explore this relationship is to look at the averages for each quality grade.
+
+```{r echo=FALSE}
+# Use all 6 levels of quality
+aggregate( formula = alcohol~quality, 
+           data = df_small,
+           FUN = mean )
+
+# Use bad/average/good quality categorical variable
+aggregate( formula = alcohol~grade, 
+           data = df_small,
+           FUN = mean )
+
+# By function to show additional stats
+by(df_small$alcohol, df_small$quality, summary)
+```
+
+Looking at the averages shows that the difference in level of alcohol is very small between "bad" and "average" wine, but quite significant between "average" and "good".
+
+It's also worth pointing out that the lowest level of alcohol among the wines with the highest quality (9.8) is lower than the highest level of alcohol among the wines with the lowest quality (11), so a high level of alcohol is neither sufficient nor necessary for quality.
+
+# Multivariate Analysis
+
+I am going to explore the other variables of interest (volatile acidity, sulphates and citric acid) splitting the data by quality grade using facet_wrap (because quality is the main variable under investigation) and always visualising the level of alcohol through size (because it's the most highly correlated to quality).
+
+Excluding quality and alcohol, the strongest relationships I have seen are between:
+
+- 1. citric acid and volatile acidity
+- 2. sulphates and volatile acidity
+- 3. sulphates and citric acid
+
+```{r echo=FALSE, Multivariate_Plots}
+# mean of alcohol - used as midpoint by scale_colour_gradient2 in the plots
+a_m <- mean(df_small$alcohol)
+
+# citric acid and volatile acidity
+ggplot(data = df_small,
+       aes(x = citric.acid,
+           y = volatile.acidity,
+           size = alcohol,
+           color = alcohol)) +
+       ggtitle('Citric Acid and Volatile Acidity') +
+       geom_point() +
+       scale_colour_gradient2(low="blue", mid="yellow", high="red",midpoint = a_m) +
+       facet_wrap(~grade, nrow = 1)
+
+# volatile acidity and sulpahtes
+ggplot(data = df_small,
+       aes(x = volatile.acidity,
+           y = sulphates,
+           size = alcohol,
+           color = alcohol)) +
+       ggtitle('Volatile Acidity and Sulphates') +
+       geom_point() +
+       scale_colour_gradient2(low="blue", mid="yellow", high="red",midpoint = a_m) +
+      
+       facet_wrap(~grade, nrow = 1)
+
+# citric acid and sulpahtes
+ggplot(data = df_small,
+       aes(x = citric.acid,
+           y = sulphates,
+           size = alcohol,
+           color = alcohol)) +
+       geom_point() +
+       ggtitle('Citric Acid and Sulphates') +
+       scale_colour_gradient2(low="blue", mid="yellow", high="red",midpoint = a_m) +
+       facet_wrap(~grade, nrow = 1)
+```
+
+In all three plots the dots are larger and warmer in the "good" section because of the correlation between wine quality and alcohol, which was already discovered.
+
+The relationship between citric acid and volatile acidity is strong and is somewhat different in the three quality grade sections. Looking at the "bad" wines, the dots are mostly on the left (low citric acid) and middle of y axis (volatile acidity), with some outliers on the top. The shape is similar for the average wines, but without extreme outliers. A clear difference can be noticed in the "good" section, where the concentration of dots increases in the middle of the x axis and bottom of the y axis because volatile acidity is negatively correlated to quality and citric acid is positively correlated.
+
+In the case of sulphates is interesting to notice how good wines have more than bad wines but at the same time without extremely high values, which instead are visible in bad and average wines.
+
+Looking at the relationship between quality and the three variables examined here, a correlation also seems evident looking at the box plots.
+
+### Box plots
+```{r echo=FALSE, box_plots}
+grid.arrange(ggplot(data = df_small,
+                    aes(x = grade, y = volatile.acidity, fill = grade)) +
+                    xlab('Quality') +
+                    ylab('Volatile Acidity (g / dm^3)') +
+                    ggtitle('Qualities and Volatile Acidity') +
+                    geom_boxplot(), 
+             ggplot(data = df_small,
+                    aes(x = grade, y = citric.acid, fill = grade)) +
+                    xlab('Quality') +
+                    ylab('Citric Acid (g / dm^3)') +
+                    ggtitle('Qualities and Citric Acid') +
+                    geom_boxplot(), 
+             ggplot(data = df_small,
+                    aes(x = grade, y = sulphates, fill = grade)) +
+                    xlab('Quality') +
+                    ylab('Sulphates  (g / dm3)') +
+                    ggtitle('Qualities and Sulphates') +
+                    geom_boxplot())
+```
+
+# Final Plots and Summary
+
+### Plot One
+```{r echo=FALSE, Plot_One}
+ggplot(data = df, aes(x = grade)) + 
+  stat_count(colour="black", fill="#722F37") +
+  xlab("Expert rating") + ylab("Count") +
+  ggtitle("Distribution of wine quality in sample")
+```
+
+### Description One
+This is the same plot as the one in the "Quality" section, but simplified showing only 3 bins.
+Wine quality is normally distributed in the dataset, with average wines (scores 5 to 6) being the vast majority.
+
+### Plot Two
+```{r echo=FALSE, Plot_Two}
+ggplot(data = df_small,
+       aes(x = grade, y = alcohol, fill = grade)) +
+  geom_boxplot() +
+  ggtitle('Alcohol Levels in Different Wine Qualities') +
+  xlab('Quality') +
+  ylab('Alcohol (% by volume)')
+```
+
+### Description Two
+There is a fairly linear correlation between quality and alcohol, although this is not true if only wines in the bottom half of the quality scale are considered. Also, outliers in the average section show that an increase in alcohol does not alone determine an increase in quality.
+
+### Plot Three
+```{r echo=FALSE, Plot_Three}
+grid.arrange(ggplot(data = df_small,
+                    aes(x = grade, y = volatile.acidity, fill = grade)) +
+                    xlab('Quality') +
+                    ylab('Volatile Acidity (g / dm^3)') +
+                    ggtitle('Qualities and Volatile Acidity') +
+                    geom_boxplot(), 
+             ggplot(data = df_small,
+                    aes(x = grade, y = citric.acid, fill = grade)) +
+                    xlab('Quality') +
+                    ylab('Citric Acid (g / dm^3)') +
+                    ggtitle('Qualities and Citric Acid') +
+                    geom_boxplot(), 
+             ggplot(data = df_small,
+                    aes(x = grade, y = sulphates, fill = grade)) +
+                    xlab('Quality') +
+                    ylab('Sulphates (g / dm^3)') +
+                    ggtitle('Qualities and Sulphates') +
+                    geom_boxplot())
+```
+
+### Description Three
+The other three variables with the highest correlation to quality are, in order, volatile acidity, sulphates and citric acid. It's very evident from the box plots how the first is negatively correlated to quality while the other two are positively correlated. Although this is less the case for citric acid, all variables show outliers, sometimes in both directions, so none of them could be used to reliably predict alone the quality of the wine.
+
+
+# Reflection
+Before drawing any conclusion from the data, there are two important considerations to be made about the data set. First, the sample size of the "good" wines (28) is very limited and second, the quality of the wines has been assessed by a limited number of experts. The documentation also states that the quality was assessed by "at least 3 evaluations", which suggests that different wines may have been graded by different experts and in different numbers, which means not all wines have been graded with a consistent method. This would be a particularly serious problem if, for example, some wine experts prefer wines with a high alcohol concentration more than others. If the data included IDs for the expert who contributed in assessing the quality of the wines this could have been investigated. Another issue with the subjective nature of the quality measurement is that some experts may tend to rate wines as good or bad instead of average more or less easily, which affects the distribution and the standard deviation of the quality variable.
+
+In short I see a real issue with the operational definition of quality in this data set and with the level of information provided in the documentation available.
+
+Having said that, there are some general findings that could be made about the direction, and to an extent magnitude, of the correlation between quality and certain variables.
+
+# References
+Citric acid in red wine:
+https://en.wikipedia.org/wiki/Acids_in_wine#Citric_acid
+http://www.livestrong.com/article/189520-what-drinks-do-not-contain-citric-acid/
+
+Renaming fields:
+http://stackoverflow.com/questions/7531868/how-to-rename-a-single-column-in-a-data-frame-in-r
+
+Creation of categorical variables:
+http://stackoverflow.com/questions/22075592/creating-category-variables-from-numerical-variable-in-r
+
+http://www.r-bloggers.com/from-continuous-to-categorical/
+
+Plot with percentages:
+http://stackoverflow.com/questions/9317948/how-to-label-histogram-bars-with-data-values-or-percents-in-r
+
+Simple correlation
+http://www.r-tutor.com/elementary-statistics/numerical-measures/correlation-coefficient
+http://www.gardenersown.co.uk/education/lectures/r/correl.htm
+http://www.statmethods.net/stats/correlations.html
+
+Concatenating strings
+http://stackoverflow.com/questions/7201341/how-can-2-strings-be-concatenated-in-r
+
+Sorting data frames
+http://stackoverflow.com/questions/1296646/how-to-sort-a-dataframe-by-columns
+
+Bar charts
+http://www.cookbook-r.com/Graphs/Bar_and_line_graphs_(ggplot2)/
+
+Drop columns
+http://stackoverflow.com/questions/4605206/drop-data-frame-columns-by-name
+
+GGpairs
+https://rpubs.com/fraki22/122149
+
+Density plots:
+http://docs.ggplot2.org/current/geom_density.html
+
+Aggregate function:
+https://learningstatisticswithr.wordpress.com/2012/11/28/a-simple-way-to-calculate-group-means-in-r/
+
+facet_wrap:
+http://docs.ggplot2.org/0.9.3.1/facet_wrap.html
+
+scale_colour_gradient2:
+http://docs.ggplot2.org/0.9.3.1/scale_gradient2.html
+
+Plotting average values for levels:
+http://stackoverflow.com/questions/11857935/plotting-the-average-values-for-each-level-in-ggplot2
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Create md and html file
+library(markdown)
+library(knitr)
+knit("Red Wine Quality by Mario Farina.Rmd")
+markdownToHTML("Red Wine Quality by Mario Farina.md", "Red Wine Quality by Mario Farina.html")
+```
